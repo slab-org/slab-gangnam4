@@ -8,6 +8,7 @@ import OpenTasks from './tasks/OpenTasks';
 import ClosingTasks from './tasks/ClosingTasks';
 import GuidePage from './tasks/Guide';
 import ReservationPage from './tasks/Reservation';
+import HandoverPage from './tasks/Handover';
 
 const App = () => {
   return (
@@ -16,6 +17,7 @@ const App = () => {
       <Route path="/util" element={<UtilPage />} />
       <Route path="/temperature" element={<TemperatureReportPage />} />
       <Route path="/reservation" element={<ReservationPage />} />
+      <Route path="/handover" element={<HandoverPage />} />
       <Route path="/guide" element={<GuidePage />} />
       <Route path="/open-tasks" element={<OpenTasks />} />
       <Route path="/closing-tasks" element={<ClosingTasks />} />
