@@ -22,6 +22,11 @@ const VersionPage = () => (
       </div>
       <div className="space-y-6">
         <VersionInfo
+          date='26.02.07'
+          version='1.4.0'
+          changes='인수인계 메모장 기능 추가 (Supabase 연동), 날짜 필터 및 검색 기능, 20건 단위 페이징 처리, 메인 화면에 인수인계 카드 추가'
+        />
+        <VersionInfo
           date='26.02.06'
           version='1.3.0'
           changes='룸 예약 입금 안내 형식 변경(선입금 시스템), 룸 예약 안내 메세지 버튼 추가, 룸 예약 확정 메시지 업데이트, 회원 안내 도구에 퇴실처리/시간복구 안내 버튼 추가, 사물함 만료 메시지 업데이트, 회원 안내 도구 범주화, 오픈/마감 업무 메뉴 제거'
