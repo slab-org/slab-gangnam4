@@ -399,11 +399,11 @@ const SchedulePage = () => {
                         const color = getStaffColor(staff.morning);
                         return (
                           <div
-                            className={`text-xs px-1 py-0.5 rounded truncate ${color.bg} ${color.text} ${
+                            className={`text-[10px] md:text-xs px-0.5 md:px-1 py-0.5 rounded truncate ${color.bg} ${color.text} ${
                               staff.morningOverridden ? `border border-dashed ${color.border}` : ''
                             }`}
                           >
-                            오전 {staff.morning}
+                            <span className="hidden md:inline">오전 </span>{staff.morning}
                           </div>
                         );
                       })()}
@@ -411,11 +411,11 @@ const SchedulePage = () => {
                         const color = getStaffColor(staff.afternoon);
                         return (
                           <div
-                            className={`text-xs px-1 py-0.5 rounded truncate ${color.bg} ${color.text} ${
+                            className={`text-[10px] md:text-xs px-0.5 md:px-1 py-0.5 rounded truncate ${color.bg} ${color.text} ${
                               staff.afternoonOverridden ? `border border-dashed ${color.border}` : ''
                             }`}
                           >
-                            오후 {staff.afternoon}
+                            <span className="hidden md:inline">오후 </span>{staff.afternoon}
                           </div>
                         );
                       })()}
