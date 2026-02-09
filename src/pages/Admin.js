@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Plus, Pencil, Trash2, Check, X } from 'lucide-react';
+import { ArrowLeft, Plus, Pencil, Trash2, Check, X, Save } from 'lucide-react';
 import Header from '../Header';
 import { supabase } from '../supabaseClient';
 
@@ -8,6 +8,27 @@ const ADMIN_PASSWORD = process.env.REACT_APP_ADMIN_PASSWORD;
 const SESSION_KEY = 'admin_authenticated';
 
 const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
+
+// Key for local assignments map: "day_shift_weekType"
+const makeKey = (day, shift, weekType) => `${day}_${shift}_${weekType}`;
+
+const buildAssignmentsMap = (templates) => {
+  const map = {};
+  templates.forEach((t) => {
+    map[makeKey(t.day_of_week, t.shift, t.week_type)] = t.staff_name;
+  });
+  return map;
+};
+
+const buildBiweeklyMap = (templates) => {
+  const map = {};
+  templates.forEach((t) => {
+    if (t.week_type === 'A' || t.week_type === 'B') {
+      map[`${t.day_of_week}_${t.shift}`] = true;
+    }
+  });
+  return map;
+};
 
 const AdminPage = () => {
   const [authenticated, setAuthenticated] = useState(
@@ -23,16 +44,27 @@ const AdminPage = () => {
   const [loading, setLoading] = useState(false);
 
   // Schedule template state
-  const [scheduleTemplates, setScheduleTemplates] = useState([]);
   const [scheduleLoading, setScheduleLoading] = useState(false);
+  const [scheduleSaving, setScheduleSaving] = useState(false);
 
-  // Biweekly state
+  // Saved state (from DB)
+  const [savedAssignments, setSavedAssignments] = useState({});
+  const [savedBiweeklyShifts, setSavedBiweeklyShifts] = useState({});
+
+  // Local editable state
+  const [localAssignments, setLocalAssignments] = useState({});
+  const [biweeklyShifts, setBiweeklyShifts] = useState({});
+  const initRef = useRef(false);
+
+  // Biweekly start date
   const [biweeklyStartDate, setBiweeklyStartDate] = useState('');
   const [biweeklyInput, setBiweeklyInput] = useState('');
   const [biweeklySaving, setBiweeklySaving] = useState(false);
-  // Track per shift: key = "dayIndex_shift", value = true/false
-  const [biweeklyShifts, setBiweeklyShifts] = useState({});
-  const biweeklyInitRef = useRef(false);
+
+  // Detect unsaved changes
+  const hasChanges =
+    JSON.stringify(localAssignments) !== JSON.stringify(savedAssignments) ||
+    JSON.stringify(biweeklyShifts) !== JSON.stringify(savedBiweeklyShifts);
 
   const handleLogin = (e) => {
     e.preventDefault();
@@ -140,7 +172,7 @@ const AdminPage = () => {
     fetchStaff();
   };
 
-  // Biweekly start date functions
+  // Biweekly start date
   const fetchBiweeklyStartDate = useCallback(async () => {
     const { data, error } = await supabase
       .from('schedule_settings')
@@ -174,7 +206,7 @@ const AdminPage = () => {
     setBiweeklySaving(false);
   };
 
-  // Schedule template functions — only derive biweeklyShifts on first load
+  // Fetch templates and sync both saved + local state
   const fetchScheduleTemplates = useCallback(async () => {
     setScheduleLoading(true);
     const { data, error } = await supabase
@@ -184,17 +216,17 @@ const AdminPage = () => {
 
     if (!error) {
       const templates = data || [];
-      setScheduleTemplates(templates);
+      const assignments = buildAssignmentsMap(templates);
+      const bwMap = buildBiweeklyMap(templates);
 
-      if (!biweeklyInitRef.current) {
-        const bwShifts = {};
-        templates.forEach((t) => {
-          if (t.week_type === 'A' || t.week_type === 'B') {
-            bwShifts[`${t.day_of_week}_${t.shift}`] = true;
-          }
-        });
-        setBiweeklyShifts(bwShifts);
-        biweeklyInitRef.current = true;
+      setSavedAssignments(assignments);
+      setSavedBiweeklyShifts(bwMap);
+
+      // Only set local state on first load (or after save)
+      if (!initRef.current) {
+        setLocalAssignments(assignments);
+        setBiweeklyShifts(bwMap);
+        initRef.current = true;
       }
     }
     setScheduleLoading(false);
@@ -207,58 +239,150 @@ const AdminPage = () => {
     }
   }, [authenticated, fetchScheduleTemplates, fetchBiweeklyStartDate]);
 
-  const getTemplateStaff = (dayOfWeek, shift, weekType = 'every') => {
-    const template = scheduleTemplates.find(
-      (t) => t.day_of_week === dayOfWeek && t.shift === shift && t.week_type === weekType
-    );
-    return template?.staff_name || '';
+  // Local-only: update a staff assignment
+  const handleLocalChange = (dayOfWeek, shift, staffName, weekType) => {
+    const key = makeKey(dayOfWeek, shift, weekType);
+    setLocalAssignments((prev) => {
+      const next = { ...prev };
+      if (staffName) {
+        next[key] = staffName;
+      } else {
+        delete next[key];
+      }
+      return next;
+    });
   };
 
-  const handleTemplateChange = async (dayOfWeek, shift, staffName, weekType = 'every') => {
-    if (!staffName) {
-      await supabase
-        .from('schedule_templates')
-        .delete()
-        .eq('day_of_week', dayOfWeek)
-        .eq('shift', shift)
-        .eq('week_type', weekType);
-    } else {
-      await supabase
-        .from('schedule_templates')
-        .upsert(
-          { day_of_week: dayOfWeek, shift, staff_name: staffName, week_type: weekType },
-          { onConflict: 'day_of_week,shift,week_type' }
-        );
-    }
-    fetchScheduleTemplates();
-  };
-
-  const handleToggleBiweekly = async (dayIndex, shift) => {
-    const key = `${dayIndex}_${shift}`;
-    const isBiweekly = biweeklyShifts[key];
+  // Local-only: toggle biweekly for a shift
+  const handleToggleBiweekly = (dayIndex, shift) => {
+    const bwKey = `${dayIndex}_${shift}`;
+    const isBiweekly = biweeklyShifts[bwKey];
 
     if (isBiweekly) {
-      // Switch from biweekly → every: delete A/B for this day+shift
-      await supabase
-        .from('schedule_templates')
-        .delete()
-        .eq('day_of_week', dayIndex)
-        .eq('shift', shift)
-        .in('week_type', ['A', 'B']);
+      // Biweekly → Every: copy A-week value to 'every', clear A/B
+      const aKey = makeKey(dayIndex, shift, 'A');
+      const bKey = makeKey(dayIndex, shift, 'B');
+      const everyKey = makeKey(dayIndex, shift, 'every');
+      const aVal = localAssignments[aKey] || '';
 
-      setBiweeklyShifts((prev) => ({ ...prev, [key]: false }));
+      setLocalAssignments((prev) => {
+        const next = { ...prev };
+        delete next[aKey];
+        delete next[bKey];
+        if (aVal) {
+          next[everyKey] = aVal;
+        }
+        return next;
+      });
+      setBiweeklyShifts((prev) => ({ ...prev, [bwKey]: false }));
     } else {
-      // Switch from every → biweekly: delete 'every' for this day+shift
-      await supabase
-        .from('schedule_templates')
-        .delete()
-        .eq('day_of_week', dayIndex)
-        .eq('shift', shift)
-        .eq('week_type', 'every');
+      // Every → Biweekly: copy 'every' value to A-week, clear 'every'
+      const everyKey = makeKey(dayIndex, shift, 'every');
+      const aKey = makeKey(dayIndex, shift, 'A');
+      const everyVal = localAssignments[everyKey] || '';
 
-      setBiweeklyShifts((prev) => ({ ...prev, [key]: true }));
+      setLocalAssignments((prev) => {
+        const next = { ...prev };
+        delete next[everyKey];
+        if (everyVal) {
+          next[aKey] = everyVal;
+        }
+        return next;
+      });
+      setBiweeklyShifts((prev) => ({ ...prev, [bwKey]: true }));
     }
-    fetchScheduleTemplates();
+  };
+
+  // Discard local changes
+  const handleDiscardChanges = () => {
+    setLocalAssignments({ ...savedAssignments });
+    setBiweeklyShifts({ ...savedBiweeklyShifts });
+  };
+
+  // Save all changes to DB at once
+  const handleSaveAll = async () => {
+    setScheduleSaving(true);
+    const promises = [];
+
+    for (let day = 0; day < 7; day++) {
+      for (const shift of ['morning', 'afternoon']) {
+        const bwKey = `${day}_${shift}`;
+        const isBiweekly = biweeklyShifts[bwKey];
+
+        if (isBiweekly) {
+          // Delete stale 'every' if it existed in DB
+          const everyKey = makeKey(day, shift, 'every');
+          if (savedAssignments[everyKey]) {
+            promises.push(
+              supabase.from('schedule_templates').delete()
+                .eq('day_of_week', day).eq('shift', shift).eq('week_type', 'every')
+            );
+          }
+
+          // Upsert/delete A and B
+          for (const wt of ['A', 'B']) {
+            const key = makeKey(day, shift, wt);
+            const localVal = localAssignments[key] || '';
+            const savedVal = savedAssignments[key] || '';
+
+            if (localVal !== savedVal) {
+              if (localVal) {
+                promises.push(
+                  supabase.from('schedule_templates').upsert(
+                    { day_of_week: day, shift, staff_name: localVal, week_type: wt },
+                    { onConflict: 'day_of_week,shift,week_type' }
+                  )
+                );
+              } else {
+                promises.push(
+                  supabase.from('schedule_templates').delete()
+                    .eq('day_of_week', day).eq('shift', shift).eq('week_type', wt)
+                );
+              }
+            }
+          }
+        } else {
+          // Delete stale A/B if they existed in DB
+          for (const wt of ['A', 'B']) {
+            const key = makeKey(day, shift, wt);
+            if (savedAssignments[key]) {
+              promises.push(
+                supabase.from('schedule_templates').delete()
+                  .eq('day_of_week', day).eq('shift', shift).eq('week_type', wt)
+              );
+            }
+          }
+
+          // Upsert/delete 'every'
+          const everyKey = makeKey(day, shift, 'every');
+          const localVal = localAssignments[everyKey] || '';
+          const savedVal = savedAssignments[everyKey] || '';
+
+          if (localVal !== savedVal) {
+            if (localVal) {
+              promises.push(
+                supabase.from('schedule_templates').upsert(
+                  { day_of_week: day, shift, staff_name: localVal, week_type: 'every' },
+                  { onConflict: 'day_of_week,shift,week_type' }
+                )
+              );
+            } else {
+              promises.push(
+                supabase.from('schedule_templates').delete()
+                  .eq('day_of_week', day).eq('shift', shift).eq('week_type', 'every')
+              );
+            }
+          }
+        }
+      }
+    }
+
+    await Promise.all(promises);
+
+    // Refresh from DB and sync local state
+    initRef.current = false;
+    await fetchScheduleTemplates();
+    setScheduleSaving(false);
   };
 
   if (!authenticated) {
@@ -300,10 +424,14 @@ const AdminPage = () => {
     );
   }
 
+  const getLocalStaff = (dayOfWeek, shift, weekType) => {
+    return localAssignments[makeKey(dayOfWeek, shift, weekType)] || '';
+  };
+
   const renderStaffSelect = (dayIndex, shift, weekType) => (
     <select
-      value={getTemplateStaff(dayIndex, shift, weekType)}
-      onChange={(e) => handleTemplateChange(dayIndex, shift, e.target.value, weekType)}
+      value={getLocalStaff(dayIndex, shift, weekType)}
+      onChange={(e) => handleLocalChange(dayIndex, shift, e.target.value, weekType)}
       className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
     >
       <option value="">미지정</option>
@@ -314,8 +442,8 @@ const AdminPage = () => {
   );
 
   const renderShiftCell = (dayIndex, shift) => {
-    const key = `${dayIndex}_${shift}`;
-    const isBiweekly = biweeklyShifts[key];
+    const bwKey = `${dayIndex}_${shift}`;
+    const isBiweekly = biweeklyShifts[bwKey];
 
     return (
       <td className="px-3 py-3 align-top">
@@ -484,30 +612,52 @@ const AdminPage = () => {
           {scheduleLoading ? (
             <p className="text-center text-gray-500 py-4">불러오는 중...</p>
           ) : (
-            <div className="bg-white rounded-lg shadow-md overflow-hidden">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-gray-50 border-b">
-                    <th className="px-3 py-3 text-left text-sm font-semibold text-gray-700">요일</th>
-                    <th className="px-3 py-3 text-left text-sm font-semibold text-gray-700">오전</th>
-                    <th className="px-3 py-3 text-left text-sm font-semibold text-gray-700">오후</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {DAY_LABELS.map((label, dayIndex) => (
-                    <tr key={dayIndex} className="border-b last:border-b-0">
-                      <td className={`px-3 py-3 text-sm font-medium align-top ${
-                        dayIndex === 0 ? 'text-red-500' : dayIndex === 6 ? 'text-blue-500' : 'text-gray-700'
-                      }`}>
-                        {label}요일
-                      </td>
-                      {renderShiftCell(dayIndex, 'morning')}
-                      {renderShiftCell(dayIndex, 'afternoon')}
+            <>
+              <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-gray-50 border-b">
+                      <th className="px-3 py-3 text-left text-sm font-semibold text-gray-700">요일</th>
+                      <th className="px-3 py-3 text-left text-sm font-semibold text-gray-700">오전</th>
+                      <th className="px-3 py-3 text-left text-sm font-semibold text-gray-700">오후</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {DAY_LABELS.map((label, dayIndex) => (
+                      <tr key={dayIndex} className="border-b last:border-b-0">
+                        <td className={`px-3 py-3 text-sm font-medium align-top ${
+                          dayIndex === 0 ? 'text-red-500' : dayIndex === 6 ? 'text-blue-500' : 'text-gray-700'
+                        }`}>
+                          {label}요일
+                        </td>
+                        {renderShiftCell(dayIndex, 'morning')}
+                        {renderShiftCell(dayIndex, 'afternoon')}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* 저장 / 취소 버튼 */}
+              {hasChanges && (
+                <div className="flex gap-2 mt-4">
+                  <button
+                    onClick={handleDiscardChanges}
+                    className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors text-sm font-medium"
+                  >
+                    취소
+                  </button>
+                  <button
+                    onClick={handleSaveAll}
+                    disabled={scheduleSaving}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-green-700 text-white rounded-lg hover:bg-green-800 transition-colors disabled:opacity-50 text-sm font-medium"
+                  >
+                    <Save className="w-4 h-4" />
+                    {scheduleSaving ? '저장 중...' : '저장'}
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </main>
