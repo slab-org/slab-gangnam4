@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Trash2, Plus, ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
+import { ArrowLeft, Trash2, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import Header from '../Header';
 import { supabase } from '../supabaseClient';
 
@@ -13,19 +13,71 @@ const formatDate = (date) => {
   return `${y}-${m}-${d}`;
 };
 
+// Returns { start: 'YYYY-MM-DD', end: 'YYYY-MM-DD' } for each filter
+const getDateRange = (filter) => {
+  const now = new Date();
+
+  if (filter === 'week') {
+    const day = now.getDay(); // 0=Sun
+    const diffToMon = day === 0 ? -6 : 1 - day;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + diffToMon);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    return { start: formatDate(monday), end: formatDate(sunday) };
+  }
+
+  if (filter === 'month') {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return { start: formatDate(start), end: formatDate(end) };
+  }
+
+  if (filter === 'lastMonth') {
+    const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const end = new Date(now.getFullYear(), now.getMonth(), 0);
+    return { start: formatDate(start), end: formatDate(end) };
+  }
+
+  return null; // 'all'
+};
+
+const FILTERS = [
+  { key: 'week', label: '이번 주' },
+  { key: 'month', label: '이번 달' },
+  { key: 'lastMonth', label: '저번 달' },
+  { key: 'all', label: '전체' },
+];
+
 const HandoverPage = () => {
   const [memos, setMemos] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(0);
-  const [filterDate, setFilterDate] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchInput, setSearchInput] = useState('');
+  const [activeFilter, setActiveFilter] = useState('week');
   const [content, setContent] = useState('');
   const [author, setAuthor] = useState('');
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [staffList, setStaffList] = useState([]);
+  const [staffLoading, setStaffLoading] = useState(true);
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+
+  useEffect(() => {
+    const fetchStaff = async () => {
+      setStaffLoading(true);
+      const { data, error } = await supabase
+        .from('staff')
+        .select('*')
+        .order('name', { ascending: true });
+
+      if (!error && data) {
+        setStaffList(data);
+      }
+      setStaffLoading(false);
+    };
+    fetchStaff();
+  }, []);
 
   const fetchMemos = useCallback(async () => {
     setLoading(true);
@@ -34,11 +86,9 @@ const HandoverPage = () => {
       .from('handovers')
       .select('*', { count: 'exact' });
 
-    if (filterDate) {
-      query = query.eq('date', filterDate);
-    }
-    if (searchQuery) {
-      query = query.or(`content.ilike.%${searchQuery}%,author.ilike.%${searchQuery}%`);
+    const range = getDateRange(activeFilter);
+    if (range) {
+      query = query.gte('date', range.start).lte('date', range.end);
     }
 
     const { data, error, count } = await query
@@ -53,22 +103,14 @@ const HandoverPage = () => {
       setTotalCount(count || 0);
     }
     setLoading(false);
-  }, [filterDate, searchQuery, page]);
+  }, [activeFilter, page]);
 
   useEffect(() => {
     fetchMemos();
   }, [fetchMemos]);
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    setPage(0);
-    setSearchQuery(searchInput.trim());
-  };
-
-  const clearFilters = () => {
-    setFilterDate('');
-    setSearchInput('');
-    setSearchQuery('');
+  const handleFilterChange = (key) => {
+    setActiveFilter(key);
     setPage(0);
   };
 
@@ -109,8 +151,6 @@ const HandoverPage = () => {
     fetchMemos();
   };
 
-  const hasFilters = filterDate || searchQuery;
-
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Header />
@@ -125,38 +165,21 @@ const HandoverPage = () => {
           <div className="w-20" />
         </div>
 
-        {/* 필터 영역 */}
-        <div className="flex flex-wrap items-center gap-3 mb-6">
-          <input
-            type="date"
-            value={filterDate}
-            onChange={(e) => { setFilterDate(e.target.value); setPage(0); }}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-          />
-          <form onSubmit={handleSearch} className="flex gap-2 flex-1 min-w-[200px]">
-            <input
-              type="text"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="내용 또는 작성자 검색"
-              className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-            />
+        {/* 필터 버튼 */}
+        <div className="flex gap-2 mb-6">
+          {FILTERS.map((f) => (
             <button
-              type="submit"
-              className="px-3 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 transition-colors"
+              key={f.key}
+              onClick={() => handleFilterChange(f.key)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                activeFilter === f.key
+                  ? 'bg-green-700 text-white'
+                  : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-100'
+              }`}
             >
-              <Search className="w-4 h-4" />
+              {f.label}
             </button>
-          </form>
-          {hasFilters && (
-            <button
-              onClick={clearFilters}
-              className="flex items-center gap-1 px-3 py-2 text-sm text-gray-600 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
-            >
-              <X className="w-3 h-3" />
-              초기화
-            </button>
-          )}
+          ))}
         </div>
 
         {/* 메모 작성 토글 */}
@@ -174,13 +197,34 @@ const HandoverPage = () => {
             <div className="space-y-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">작성자</label>
-                <input
-                  type="text"
-                  value={author}
-                  onChange={(e) => setAuthor(e.target.value)}
-                  placeholder="이름"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
+                {staffLoading ? (
+                  <p className="text-sm text-gray-400">불러오는 중...</p>
+                ) : staffList.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {staffList.map((staff) => (
+                      <button
+                        key={staff.id}
+                        type="button"
+                        onClick={() => setAuthor(author === staff.name ? '' : staff.name)}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                          author === staff.name
+                            ? 'bg-green-700 text-white border-green-700'
+                            : 'bg-white text-gray-700 border-gray-300 hover:border-green-500'
+                        }`}
+                      >
+                        {staff.name}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <input
+                    type="text"
+                    value={author}
+                    onChange={(e) => setAuthor(e.target.value)}
+                    placeholder="이름"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">내용</label>

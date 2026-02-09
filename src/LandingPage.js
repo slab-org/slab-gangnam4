@@ -3,7 +3,7 @@ import Header from './Header';
 import Hero from './Hero';
 import Footer from './Footer';
 import { Link } from 'react-router-dom';
-import { Hammer, Calendar, MessageCircle, Thermometer, ClipboardList } from 'lucide-react';
+import { Hammer, Calendar, CalendarDays, MessageCircle, Thermometer, ClipboardList, Settings } from 'lucide-react';
 
 const Feature = ({ icon: Icon, title, description, link }) => (
   <Link to={link} className="flex flex-col items-center p-6 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow">
@@ -42,11 +42,23 @@ const Features = () => (
           description="룸 예약 유틸"
           link="/reservation"
         />
-        <Feature 
-          icon={MessageCircle} 
-          title="회원 안내 도구" 
-          description="주차, 좌석, 사물함, 소음 안내" 
+        <Feature
+          icon={CalendarDays}
+          title="근무표"
+          description="월별 근무 스케줄"
+          link="/schedule"
+        />
+        <Feature
+          icon={MessageCircle}
+          title="회원 안내 도구"
+          description="주차, 좌석, 사물함, 소음 안내"
           link="/guide"
+        />
+        <Feature
+          icon={Settings}
+          title="관리자"
+          description="근무자 관리"
+          link="/admin"
         />
       </div>
     </div>

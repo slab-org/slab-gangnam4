@@ -9,6 +9,8 @@ import ClosingTasks from './tasks/ClosingTasks';
 import GuidePage from './tasks/Guide';
 import ReservationPage from './tasks/Reservation';
 import HandoverPage from './tasks/Handover';
+import AdminPage from './pages/Admin';
+import SchedulePage from './pages/Schedule';
 
 const App = () => {
   return (
@@ -21,6 +23,8 @@ const App = () => {
       <Route path="/guide" element={<GuidePage />} />
       <Route path="/open-tasks" element={<OpenTasks />} />
       <Route path="/closing-tasks" element={<ClosingTasks />} />
+      <Route path="/schedule" element={<SchedulePage />} />
+      <Route path="/admin" element={<AdminPage />} />
       <Route path="/version" element={<VersionPage />} />
     </Routes>
   );

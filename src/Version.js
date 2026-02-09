@@ -22,6 +22,11 @@ const VersionPage = () => (
       </div>
       <div className="space-y-6">
         <VersionInfo
+          date='26.02.09'
+          version='1.5.0'
+          changes='근무표 및 관리자 페이지 추가, 격주 근무 설정 기능 (A주/B주 오전·오후 개별 지정), 근무자별 고유 색상 표시, 인수인계 작성자 버튼 선택 방식 변경'
+        />
+        <VersionInfo
           date='26.02.07'
           version='1.4.0'
           changes='인수인계 메모장 기능 추가 (Supabase 연동), 날짜 필터 및 검색 기능, 20건 단위 페이징 처리, 메인 화면에 인수인계 카드 추가'
