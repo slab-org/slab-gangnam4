@@ -24,8 +24,26 @@ const HandoverPage = () => {
   const [author, setAuthor] = useState('');
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [staffList, setStaffList] = useState([]);
+  const [staffLoading, setStaffLoading] = useState(true);
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+
+  useEffect(() => {
+    const fetchStaff = async () => {
+      setStaffLoading(true);
+      const { data, error } = await supabase
+        .from('staff')
+        .select('*')
+        .order('name', { ascending: true });
+
+      if (!error && data) {
+        setStaffList(data);
+      }
+      setStaffLoading(false);
+    };
+    fetchStaff();
+  }, []);
 
   const fetchMemos = useCallback(async () => {
     setLoading(true);
@@ -174,13 +192,34 @@ const HandoverPage = () => {
             <div className="space-y-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">작성자</label>
-                <input
-                  type="text"
-                  value={author}
-                  onChange={(e) => setAuthor(e.target.value)}
-                  placeholder="이름"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
+                {staffLoading ? (
+                  <p className="text-sm text-gray-400">불러오는 중...</p>
+                ) : staffList.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {staffList.map((staff) => (
+                      <button
+                        key={staff.id}
+                        type="button"
+                        onClick={() => setAuthor(author === staff.name ? '' : staff.name)}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                          author === staff.name
+                            ? 'bg-green-700 text-white border-green-700'
+                            : 'bg-white text-gray-700 border-gray-300 hover:border-green-500'
+                        }`}
+                      >
+                        {staff.name}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <input
+                    type="text"
+                    value={author}
+                    onChange={(e) => setAuthor(e.target.value)}
+                    placeholder="이름"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">내용</label>

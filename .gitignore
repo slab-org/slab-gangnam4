@@ -37,3 +37,6 @@ Thumbs.db
 # dev script files
 .dev.log
 .dev.pid
+
+CLAUDE.md
+nul
