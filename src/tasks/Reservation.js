@@ -46,18 +46,19 @@ const CopyButton = ({ text, children, onCopy }) => {
   );
 };
 
-const AmountButton = ({ value, onClick, isSubtract }) => (
-  <button
-    onClick={() => onClick(value, isSubtract)}
-    className={`px-3 py-1 text-sm rounded font-medium transition-colors ${
-      isSubtract 
-        ? 'bg-red-100 text-red-700 hover:bg-red-200' 
-        : 'bg-green-100 text-green-700 hover:bg-green-200'
-    }`}
-  >
-    {isSubtract ? '-' : '+'}{new Intl.NumberFormat('ko-KR').format(value)}
-  </button>
-);
+const ROOM_PRICE_PER_30MIN = {
+  '2인실': 3000,
+  '4인실': 5500,
+};
+
+const TIME_SLOTS = [
+  { label: '30분', multiplier: 1 },
+  { label: '1시간', multiplier: 2 },
+  { label: '1시간 30분', multiplier: 3 },
+  { label: '2시간', multiplier: 4 },
+  { label: '2시간 30분', multiplier: 5 },
+  { label: '3시간', multiplier: 6 },
+];
 
 const ReservationPage = () => {
   const [amount, setAmount] = useState(0);
@@ -66,8 +67,6 @@ const ReservationPage = () => {
   const refundPolicyText = branchData.reservationMessages[0]?.refundPolicyText || [];
   const confirmationText = branchData.reservationMessages[0]?.confirmationText || [];
   const bankAccount = branchData.reservationMessages[0]?.bankAccount || {};
-
-  const amountPresets = [3000, 5500, 6000, 11000];
 
   const formatAmount = (value) => {
     return new Intl.NumberFormat('ko-KR').format(value);
@@ -96,27 +95,6 @@ ${formatAmount(amount)}원을 아래의 계좌번호로 송금해주시면 예�
 계좌번호 : ${bankAccount.accountNumber} ${bankAccount.bank} (${bankAccount.accountHolder})
 
 30분 안에 입금이 없는 경우 예약 신청은 취소 되니 참고해주세요.`;
-
-  const reservationGuideText = `해당 양식 작성해서 회신해주시면 예약 도와드리겠습니다 :)
-
-신규 or 기존(신규는 직원이 회원가입을 진행해 드립니다 pw: 휴대폰 뒷 4자리) : 
-예약자 성함:
-전화번호:
-원하는 예약 날짜 & 시간:
-룸 시간충전권 보유 여부:
-
-예약 전날부터는 취소가 불가하니 유의해주세요^^
-
-----
-환불
-
-- 이용 3일 전부터: 위약금 30% 
-- 이용 1일 전부터: 위약금 100% 
-
-변경
-
-- 날짜 변경: 3일 전까지 가능
-- 이용일 시간 변경: 1일 전까지`;
 
   const reservationFormText = `1. 어플 이용 (아래 링크 클릭)
 https://slabkorea-mo3.imweb.me/45
@@ -164,10 +142,40 @@ https://slabkorea-mo3.imweb.me/45
       </div>
 
       <div className="mb-6">
-        <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          가격표
+        </label>
+        <div className="overflow-x-auto mb-4">
+          <table className="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
+            <thead>
+              <tr className="bg-gray-50">
+                <th className="px-2 py-2 text-left font-semibold text-gray-700 border-b border-r border-gray-200"></th>
+                {TIME_SLOTS.map((slot) => (
+                  <th key={slot.label} className="px-2 py-2 text-center font-semibold text-gray-700 border-b border-r last:border-r-0 border-gray-200 whitespace-nowrap">
+                    {slot.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {Object.entries(ROOM_PRICE_PER_30MIN).map(([room, price]) => (
+                <tr key={room} className="border-b last:border-b-0">
+                  <td className="px-2 py-2 font-medium text-gray-700 border-r border-gray-200 whitespace-nowrap">{room}</td>
+                  {TIME_SLOTS.map((slot) => (
+                    <td key={slot.label} className="px-2 py-2 text-center text-gray-600 border-r last:border-r-0 border-gray-200 whitespace-nowrap">
+                      {formatAmount(price * slot.multiplier)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <label className="block text-sm font-medium text-gray-700 mb-2">
           입금 금액
         </label>
-        <div className="flex items-center gap-3 mb-3">
+        <div className="flex items-center gap-3 mb-4">
           <Input
             type="number"
             id="amount"
@@ -183,33 +191,32 @@ https://slabkorea-mo3.imweb.me/45
             초기화
           </button>
         </div>
-        <div className="flex flex-wrap gap-2 mb-3">
-          {amountPresets.map(preset => (
-            <AmountButton key={`add-${preset}`} value={preset} onClick={handleAmountChange} isSubtract={false} />
-          ))}
-        </div>
         <div className="flex flex-wrap gap-2 mb-4">
-          {amountPresets.map(preset => (
-            <AmountButton key={`sub-${preset}`} value={preset} onClick={handleAmountChange} isSubtract={true} />
+          {Object.entries(ROOM_PRICE_PER_30MIN).map(([room, price]) => (
+            <React.Fragment key={room}>
+              <button
+                onClick={() => handleAmountChange(price, false)}
+                className="px-3 py-1.5 text-sm rounded font-medium transition-colors bg-green-100 text-green-700 hover:bg-green-200"
+              >
+                +{room} 30분 (+{formatAmount(price)})
+              </button>
+              <button
+                onClick={() => handleAmountChange(price, true)}
+                className="px-3 py-1.5 text-sm rounded font-medium transition-colors bg-red-100 text-red-700 hover:bg-red-200"
+              >
+                -{room} 30분 (-{formatAmount(price)})
+              </button>
+            </React.Fragment>
           ))}
         </div>
-        <CopyButton text={depositText} onCopy={setCopiedText}>입금 안내 복사</CopyButton>
-      </div>
-
-      <div className="mb-6">
-        <CopyButton text={reservationGuideText} onCopy={setCopiedText}>룸 예약 안내 메세지 복사</CopyButton>
-      </div>
-
-      <div className="mb-6">
-          <Button onClick={handleConfirm} className="w-full sm:w-auto">예약 확정 안내 복사</Button>
+        <div className="flex flex-wrap gap-2">
+          <CopyButton text={depositText} onCopy={setCopiedText}>입금 안내 복사</CopyButton>
+          <Button onClick={handleConfirm} className="mb-4">예약 확정 안내 복사</Button>
         </div>
-
-      <div className="mb-6">
-        <CopyButton text={refundPolicyText} onCopy={setCopiedText}>환불 정책 복사</CopyButton>
-      </div>
-
-      <div className="mb-6">
-        <CopyButton text={reservationFormText} onCopy={setCopiedText}>룸 예약 신청 양식 복사</CopyButton>
+        <div className="flex flex-wrap gap-2">
+          <CopyButton text={refundPolicyText} onCopy={setCopiedText}>환불 정책 복사</CopyButton>
+          <CopyButton text={reservationFormText} onCopy={setCopiedText}>룸 예약 신청 양식 복사</CopyButton>
+        </div>
       </div>
 
       {copiedText && (
