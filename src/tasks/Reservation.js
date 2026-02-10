@@ -161,15 +161,23 @@ https://slabkorea-mo3.imweb.me/45
               {Object.entries(ROOM_PRICE_PER_30MIN).map(([room, price]) => (
                 <tr key={room} className="border-b last:border-b-0">
                   <td className="px-2 py-2 font-medium text-gray-700 border-r border-gray-200 whitespace-nowrap">{room}</td>
-                  {TIME_SLOTS.map((slot) => (
-                    <td key={slot.label} className="px-2 py-2 text-center text-gray-600 border-r last:border-r-0 border-gray-200 whitespace-nowrap">
-                      {formatAmount(price * slot.multiplier)}
-                    </td>
-                  ))}
+                  {TIME_SLOTS.map((slot) => {
+                    const cellAmount = price * slot.multiplier;
+                    return (
+                      <td
+                        key={slot.label}
+                        onClick={() => setAmount(prev => prev + cellAmount)}
+                        className="px-2 py-2 text-center text-gray-600 border-r last:border-r-0 border-gray-200 whitespace-nowrap cursor-pointer hover:bg-green-50 hover:text-green-700 active:bg-green-100 transition-colors"
+                      >
+                        {formatAmount(cellAmount)}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>
           </table>
+          <p className="text-xs text-gray-400 mt-1">금액을 클릭하면 아래 입금 금액에 추가됩니다</p>
         </div>
 
         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -190,24 +198,6 @@ https://slabkorea-mo3.imweb.me/45
           >
             초기화
           </button>
-        </div>
-        <div className="flex flex-wrap gap-2 mb-4">
-          {Object.entries(ROOM_PRICE_PER_30MIN).map(([room, price]) => (
-            <React.Fragment key={room}>
-              <button
-                onClick={() => handleAmountChange(price, false)}
-                className="px-3 py-1.5 text-sm rounded font-medium transition-colors bg-green-100 text-green-700 hover:bg-green-200"
-              >
-                +{room} 30분 (+{formatAmount(price)})
-              </button>
-              <button
-                onClick={() => handleAmountChange(price, true)}
-                className="px-3 py-1.5 text-sm rounded font-medium transition-colors bg-red-100 text-red-700 hover:bg-red-200"
-              >
-                -{room} 30분 (-{formatAmount(price)})
-              </button>
-            </React.Fragment>
-          ))}
         </div>
         <div className="flex flex-wrap gap-2">
           <CopyButton text={depositText} onCopy={setCopiedText}>입금 안내 복사</CopyButton>
