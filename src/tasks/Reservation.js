@@ -69,13 +69,6 @@ const ReservationPage = () => {
     return new Intl.NumberFormat('ko-KR').format(value);
   };
 
-  const handleAmountChange = (value, isSubtract) => {
-    setAmount(prev => {
-      const newAmount = isSubtract ? prev - value : prev + value;
-      return Math.max(0, newAmount);
-    });
-  };
-
   const handleConfirm = () => {
     navigator.clipboard.writeText(confirmationText);
     setCopiedText(confirmationText);
@@ -180,7 +173,7 @@ https://slabkorea-mo3.imweb.me/45
         <label className="block text-sm font-medium text-gray-700 mb-2">
           입금 금액
         </label>
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex items-center gap-3 mb-3">
           <Input
             type="number"
             id="amount"
@@ -195,6 +188,24 @@ https://slabkorea-mo3.imweb.me/45
           >
             초기화
           </button>
+        </div>
+        <div className="grid grid-cols-2 gap-2 mb-4">
+          {Object.entries(ROOM_PRICE_PER_30MIN).map(([room, price]) => (
+            <React.Fragment key={room}>
+              <button
+                onClick={() => setAmount(prev => prev + price)}
+                className="px-3 py-1.5 text-sm rounded font-medium transition-colors bg-green-100 text-green-700 hover:bg-green-200"
+              >
+                +{room} 30분 (+{formatAmount(price)})
+              </button>
+              <button
+                onClick={() => setAmount(prev => Math.max(0, prev - price))}
+                className="px-3 py-1.5 text-sm rounded font-medium transition-colors bg-red-100 text-red-700 hover:bg-red-200"
+              >
+                -{room} 30분 (-{formatAmount(price)})
+              </button>
+            </React.Fragment>
+          ))}
         </div>
         <div className="flex flex-wrap gap-2">
           <CopyButton text={depositText} onCopy={setCopiedText}>입금 안내 복사</CopyButton>
