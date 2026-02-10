@@ -52,11 +52,8 @@ const ROOM_PRICE_PER_30MIN = {
 };
 
 const TIME_SLOTS = [
-  { label: '30분', multiplier: 1 },
   { label: '1시간', multiplier: 2 },
-  { label: '1시간 30분', multiplier: 3 },
   { label: '2시간', multiplier: 4 },
-  { label: '2시간 30분', multiplier: 5 },
   { label: '3시간', multiplier: 6 },
 ];
 
