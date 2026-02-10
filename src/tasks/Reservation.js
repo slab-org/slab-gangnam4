@@ -67,7 +67,7 @@ const ReservationPage = () => {
   const confirmationText = branchData.reservationMessages[0]?.confirmationText || [];
   const bankAccount = branchData.reservationMessages[0]?.bankAccount || {};
 
-  const amountPresets = [4000, 5500, 8000, 11000];
+  const amountPresets = [3000, 5500, 6000, 11000];
 
   const formatAmount = (value) => {
     return new Intl.NumberFormat('ko-KR').format(value);
@@ -117,6 +117,36 @@ ${formatAmount(amount)}원을 아래의 계좌번호로 송금해주시면 예�
 
 - 날짜 변경: 3일 전까지 가능
 - 이용일 시간 변경: 1일 전까지`;
+
+  const reservationFormText = `1. 어플 이용 (아래 링크 클릭)
+https://slabkorea-mo3.imweb.me/45
+
+
+2. 룸 예약 신청 양식
+
+> 신규 / 기존:
+> 성함:
+> 전화번호:
+> 룸 종류 (2인실 / 4인실):
+> 예약 날짜 & 시간 :
+> 환불 정책에 동의하십니까?
+
+-
+시간당 가격 (유효기간: 1년)
+- 2인실: 6,000원 (오픈 할인가)
+- 4인실: 9,000원 (오픈 할인가)
+- 10시간 충전권(1년): 5% 할인
+- 20시간 충전권(1년): 10% 할인
+
+※ 룸 충전권 환불은 구입 후 7일 안에만 가능
+
+예약 취소
+- 이용 3일 전부터: 위약금 30%
+- 이용 1일 전부터: 취소 불가
+
+예약 변경
+- 예약 날짜 변경: 1일 전
+※ 변경 후 재변경 or 환불 불가`;
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -176,6 +206,10 @@ ${formatAmount(amount)}원을 아래의 계좌번호로 송금해주시면 예�
 
       <div className="mb-6">
         <CopyButton text={refundPolicyText} onCopy={setCopiedText}>환불 정책 복사</CopyButton>
+      </div>
+
+      <div className="mb-6">
+        <CopyButton text={reservationFormText} onCopy={setCopiedText}>룸 예약 신청 양식 복사</CopyButton>
       </div>
 
       {copiedText && (
