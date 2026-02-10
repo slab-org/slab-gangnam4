@@ -31,28 +31,28 @@ const Features = () => (
           link="/util"
         />
         <Feature
-          icon={ClipboardList}
-          title="인수인계"
-          description="날짜별 인수인계 메모장"
-          link="/handover"
-        />
-        <Feature
           icon={Calendar}
           title="룸 예약 도구"
           description="룸 예약 유틸"
           link="/reservation"
         />
         <Feature
-          icon={CalendarDays}
-          title="근무표"
-          description="월별 근무 스케줄"
-          link="/schedule"
-        />
-        <Feature
           icon={MessageCircle}
           title="회원 안내 도구"
           description="주차, 좌석, 사물함, 소음 안내"
           link="/guide"
+        />
+        <Feature
+          icon={ClipboardList}
+          title="인수인계"
+          description="날짜별 인수인계 메모장"
+          link="/handover"
+        />
+        <Feature
+          icon={CalendarDays}
+          title="근무표"
+          description="월별 근무 스케줄"
+          link="/schedule"
         />
         <Feature
           icon={Settings}
