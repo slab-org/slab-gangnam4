@@ -46,15 +46,15 @@ const CopyButton = ({ text, children, onCopy }) => {
   );
 };
 
-const ROOM_PRICE_PER_30MIN = {
-  '2인실': 3000,
-  '4인실': 5500,
+const ROOM_PRICE_PER_HOUR = {
+  '2인실': 6000,
+  '4인실': 9000,
 };
 
 const TIME_SLOTS = [
-  { label: '1시간', multiplier: 2 },
-  { label: '2시간', multiplier: 4 },
-  { label: '3시간', multiplier: 6 },
+  { label: '1시간', multiplier: 1 },
+  { label: '2시간', multiplier: 2 },
+  { label: '3시간', multiplier: 3 },
 ];
 
 const ReservationPage = () => {
@@ -148,7 +148,7 @@ https://slabkorea-mo3.imweb.me/45
               </tr>
             </thead>
             <tbody>
-              {Object.entries(ROOM_PRICE_PER_30MIN).map(([room, price]) => (
+              {Object.entries(ROOM_PRICE_PER_HOUR).map(([room, price]) => (
                 <tr key={room} className="border-b last:border-b-0">
                   <td className="px-2 py-2 font-medium text-gray-700 border-r border-gray-200 whitespace-nowrap">{room}</td>
                   {TIME_SLOTS.map((slot) => {
@@ -190,22 +190,25 @@ https://slabkorea-mo3.imweb.me/45
           </button>
         </div>
         <div className="grid grid-cols-2 gap-2 mb-4">
-          {Object.entries(ROOM_PRICE_PER_30MIN).map(([room, price]) => (
-            <React.Fragment key={room}>
-              <button
-                onClick={() => setAmount(prev => prev + price)}
-                className="px-3 py-1.5 text-sm rounded font-medium transition-colors bg-green-100 text-green-700 hover:bg-green-200"
-              >
-                +{room} 30분 (+{formatAmount(price)})
-              </button>
-              <button
-                onClick={() => setAmount(prev => Math.max(0, prev - price))}
-                className="px-3 py-1.5 text-sm rounded font-medium transition-colors bg-red-100 text-red-700 hover:bg-red-200"
-              >
-                -{room} 30분 (-{formatAmount(price)})
-              </button>
-            </React.Fragment>
-          ))}
+          {Object.entries(ROOM_PRICE_PER_HOUR).map(([room, price]) => {
+            const halfHourPrice = price / 2;
+            return (
+              <React.Fragment key={room}>
+                <button
+                  onClick={() => setAmount(prev => prev + halfHourPrice)}
+                  className="px-3 py-1.5 text-sm rounded font-medium transition-colors bg-green-100 text-green-700 hover:bg-green-200"
+                >
+                  +{room} 30분 (+{formatAmount(halfHourPrice)})
+                </button>
+                <button
+                  onClick={() => setAmount(prev => Math.max(0, prev - halfHourPrice))}
+                  className="px-3 py-1.5 text-sm rounded font-medium transition-colors bg-red-100 text-red-700 hover:bg-red-200"
+                >
+                  -{room} 30분 (-{formatAmount(halfHourPrice)})
+                </button>
+              </React.Fragment>
+            );
+          })}
         </div>
         <div className="flex flex-wrap gap-2">
           <CopyButton text={depositText} onCopy={setCopiedText}>입금 안내 복사</CopyButton>
